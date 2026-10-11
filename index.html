@@ -4,24 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Duck Pond</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
 <style>
-/* Duck Pond: full-screen canvas pond. */
-:root{
-  --pond-deep:#34718d;
-  --pond-mid:#5fb1c9;
-  --pond-light:#a9cee3;
-  --paper:#fbf6ea;
-  --ink:#3b4a42;
-  --ink-soft:#6c7a6f;
-  --moss:#8ab177;
-  --font-display:"Kaisei Opti","Hiragino Mincho ProN",Georgia,serif;
-  --font-body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Trebuchet MS",system-ui,sans-serif;
-  color-scheme:light;
-}
-html,body{height:100%;overflow:hidden}
-body{background:var(--pond-deep);color:var(--ink);font-family:var(--font-body);-webkit-user-select:none;user-select:none}
+html,body{height:100%;overflow:hidden;margin:0}
+body{background:#2f7fa3;-webkit-user-select:none;user-select:none}
 #pond{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none}
 </style>
 </head>
@@ -61,10 +46,10 @@ function paintBackground() {
   }
   // brushy wave strokes
   bctx.lineCap = 'round';
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 220; i++) {
     const x = rnd(0, W), y = rnd(0, H), l = rnd(14, 46) * S;
-    bctx.strokeStyle = `rgba(235,250,248,${rnd(.08, .22)})`;
-    bctx.lineWidth = rnd(1.2, 3) * S;
+    bctx.strokeStyle = i % 3 === 0 ? `rgba(40,110,150,${rnd(.08, .2)})` : `rgba(235,250,248,${rnd(.06, .2)})`;
+    bctx.lineWidth = rnd(1.2, 4.5) * S;
     bctx.beginPath(); bctx.moveTo(x, y); bctx.quadraticCurveTo(x + l / 2, y - l * .18, x + l, y); bctx.stroke();
   }
   // lily pads near the edges
@@ -85,24 +70,69 @@ function paintBackground() {
   glints = Array.from({ length: reduced ? 15 : 55 }, () => ({ x: rnd(0, W), y: rnd(0, H), p: rnd(0, 6.28), s: rnd(.6, 1.6) }));
 }
 function drawPad(p) {
-  const c = bctx; c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
-  c.fillStyle = 'rgba(20,60,70,.22)';
-  c.beginPath(); c.ellipse(4 * S, 6 * S, p.r, p.r * .95, 0, 0, 7); c.fill();
-  const g = c.createRadialGradient(-p.r * .3, -p.r * .3, 0, 0, 0, p.r);
-  g.addColorStop(0, '#9fcf74'); g.addColorStop(1, '#4f8a45');
-  c.fillStyle = g;
-  c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, p.r, .32, Math.PI * 2 - .02); c.closePath(); c.fill();
-  c.strokeStyle = 'rgba(40,80,40,.45)'; c.lineWidth = 1.2 * S;
-  for (let a = .7; a < 6.2; a += .75) { c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * p.r * .85, Math.sin(a) * p.r * .85); c.stroke(); }
-  if (p.flower) {
-    c.translate(p.r * .25, -p.r * .2);
-    for (let i = 0; i < 8; i++) {
-      c.rotate(Math.PI / 4);
-      c.fillStyle = i % 2 ? '#f6c9d4' : '#fbe3e8';
-      c.beginPath(); c.ellipse(p.r * .22, 0, p.r * .24, p.r * .1, 0, 0, 7); c.fill();
-    }
-    c.fillStyle = '#f4cf5b'; c.beginPath(); c.arc(0, 0, p.r * .1, 0, 7); c.fill();
+  const r = p.r, size = Math.ceil(r * 2.6), half = size / 2;
+  const off = document.createElement('canvas');
+  off.width = Math.ceil(size * DPR); off.height = Math.ceil(size * DPR);
+  const c = off.getContext('2d');
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.translate(half, half); c.rotate(p.rot);
+  const padPath = () => { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, r, .32, Math.PI * 2 - .02); c.closePath(); };
+  // base color
+  padPath(); c.fillStyle = '#6fa85c'; c.fill();
+  c.save(); padPath(); c.clip();
+  // painted dabs of many greens
+  const greens = ['#e2ec9a', '#c6e08a', '#a3cf72', '#86bd66', '#6aa85e', '#5e9a58', '#467f5a', '#3a6e62', '#2f5f66', '#9cc4a0', '#d6c977'];
+  for (let i = 0; i < 26; i++) {
+    const a = rnd(0, 6.28), d = rnd(0, r), x = Math.cos(a) * d, y = Math.sin(a) * d, rr = rnd(.25, .6) * r;
+    const g = c.createRadialGradient(x, y, 0, x, y, rr);
+    const col = greens[i % greens.length];
+    g.addColorStop(0, col + 'd0'); g.addColorStop(1, col + '00');
+    c.fillStyle = g; c.fillRect(-r, -r, r * 2, r * 2);
   }
+  // warm light top-left, blue-green shadow bottom-right
+  const la = -Math.PI * .75 - p.rot, lx = Math.cos(la) * r, ly = Math.sin(la) * r;
+  const sh = c.createLinearGradient(lx, ly, -lx, -ly);
+  sh.addColorStop(0, 'rgba(250,255,200,.5)'); sh.addColorStop(.25, 'rgba(220,240,160,.15)'); sh.addColorStop(.55, 'rgba(0,0,0,0)'); sh.addColorStop(.8, 'rgba(40,90,90,.3)'); sh.addColorStop(1, 'rgba(25,55,85,.6)');
+  c.fillStyle = sh; c.fillRect(-r, -r, r * 2, r * 2);
+  const rim = c.createRadialGradient(0, 0, r * .5, 0, 0, r);
+  rim.addColorStop(0, 'rgba(40,80,60,0)'); rim.addColorStop(1, 'rgba(40,80,60,.35)');
+  c.fillStyle = rim; c.fillRect(-r, -r, r * 2, r * 2);
+  // light brushstrokes catching the sun
+  for (let i = 0; i < 12; i++) {
+    const a = la + rnd(-.6, .6), d0 = r * rnd(.35, .8);
+    c.strokeStyle = `rgba(245,255,210,${rnd(.15, .35)})`; c.lineWidth = rnd(1.5, 3) * S; c.lineCap = 'round';
+    c.beginPath(); c.arc(0, 0, d0, a - .25, a + .25); c.stroke();
+  }
+  // darker strokes on the shadow side
+  for (let i = 0; i < 10; i++) {
+    const a = la + Math.PI + rnd(-.9, .9), d0 = r * rnd(.25, .85);
+    c.strokeStyle = `rgba(30,70,70,${rnd(.12, .28)})`; c.lineWidth = rnd(1.5, 3.5) * S;
+    c.beginPath(); c.arc(0, 0, d0, a - .3, a + .3); c.stroke();
+  }
+  // faint veins
+  c.strokeStyle = 'rgba(50,90,50,.16)'; c.lineWidth = 1.6 * S; c.lineCap = 'round';
+  for (let a = .7; a < 6.2; a += .75) { c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * r * .85, Math.sin(a) * r * .85); c.stroke(); }
+  c.restore();
+  // soft shadow on the water, then the pad
+  bctx.save();
+  if ('filter' in bctx) bctx.filter = `blur(${4 * S}px)`;
+  bctx.fillStyle = 'rgba(20,60,80,.25)';
+  bctx.beginPath(); bctx.ellipse(p.x + 4 * S, p.y + 6 * S, r, r * .95, 0, 0, 7); bctx.fill();
+  bctx.filter = 'none';
+  bctx.drawImage(off, p.x - half, p.y - half, size, size);
+  bctx.restore();
+  if (p.flower) drawFlower(p);
+}
+function drawFlower(p) {
+  const c = bctx, r = p.r;
+  c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.translate(r * .25, -r * .2);
+  if ('filter' in c) c.filter = `blur(${.6 * S}px)`;
+  for (let i = 0; i < 8; i++) {
+    c.rotate(Math.PI / 4);
+    c.fillStyle = i % 2 ? '#f6c9d4' : '#fbe3e8';
+    c.beginPath(); c.ellipse(r * .22, 0, r * .24, r * .1, 0, 0, 7); c.fill();
+  }
+  c.fillStyle = '#f4cf5b'; c.beginPath(); c.arc(0, 0, r * .1, 0, 7); c.fill();
   c.restore();
 }
 
@@ -129,68 +159,116 @@ function rescaleDucks() {
   ducks.forEach(d => { d.L = (d.adult ? 64 : 34) * S; d.x = clamp(d.x, d.L, W - d.L); d.y = clamp(d.y, d.L, H - d.L); });
 }
 
-function drawDuck(d, t) {
-  const L = d.L, bob = 1 + Math.sin(t * 2.2 + d.bob) * .018;
-  ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.h);
-  // shadow + water ring
-  ctx.fillStyle = 'rgba(18,58,88,.28)';
-  ctx.beginPath(); ctx.ellipse(L * .06, L * .12, L * .5, L * .33, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = 'rgba(230,250,250,.35)'; ctx.lineWidth = 1.5 * S;
-  ctx.beginPath(); ctx.ellipse(-L * .02, 0, L * .5, L * .35, 0, 0, 7); ctx.stroke();
-  ctx.scale(bob, bob);
+const sprites = {};
+const canBlur = 'filter' in ctx;
+function buildSprites() {
+  for (const adult of [true, false]) {
+    const L = (adult ? 64 : 34) * S, pad = L * .25;
+    const w = L * 1.4 + pad * 2, h = L * 1.0 + pad * 2, ox = pad + L * .7, oy = h / 2;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
+    const g = c.getContext('2d');
+    g.setTransform(DPR, 0, 0, DPR, 0, 0); g.translate(ox, oy);
+    if (canBlur) g.filter = `blur(${(adult ? .4 : .3) * S}px)`;
+    paintDuck(g, adult, L);
+    sprites[adult ? 'a' : 'k'] = { c, w, h, ox, oy };
+  }
+}
 
-  const outline = d.adult ? 'rgba(110,95,78,.7)' : 'rgba(170,110,30,.6)';
-  const bodyG = ctx.createRadialGradient(-L * .05, -L * .08, L * .02, 0, 0, L * .45);
-  if (d.adult) { bodyG.addColorStop(0, '#fffdf6'); bodyG.addColorStop(.7, '#f4efe3'); bodyG.addColorStop(1, '#e7dfd0'); }
-  else { bodyG.addColorStop(0, '#f0e399'); bodyG.addColorStop(.6, '#f5d669'); bodyG.addColorStop(1, '#f2ca5c'); }
-  ctx.lineWidth = (d.adult ? 1.4 : 1.2) * S; ctx.strokeStyle = outline; ctx.fillStyle = bodyG;
+// soft light from one side, cool shadow on the other
+function shade(c, adult, x0, y0, x1, y1) {
+  const g = c.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, 'rgba(255,255,255,.45)');
+  g.addColorStop(.4, 'rgba(255,255,255,0)');
+  g.addColorStop(1, adult ? 'rgba(100,120,165,.65)' : 'rgba(195,100,20,.65)');
+  c.fillStyle = g;
+}
 
-  // tail
-  ctx.beginPath();
-  if (d.adult) { ctx.moveTo(-L * .34, -L * .12); ctx.quadraticCurveTo(-L * .62, 0, -L * .34, L * .12); }
-  else { ctx.moveTo(-L * .28, -L * .1); ctx.quadraticCurveTo(-L * .46, 0, -L * .28, L * .1); }
-  ctx.fill(); ctx.stroke();
-  // body
-  ctx.beginPath(); ctx.ellipse(-L * .02, 0, d.adult ? L * .42 : L * .34, d.adult ? L * .27 : L * .28, 0, 0, 7); ctx.fill(); ctx.stroke();
-  // wings
-  ctx.fillStyle = d.adult ? 'rgba(200,188,168,.55)' : 'rgba(230,160,40,.35)';
+// short painterly strokes inside an ellipse
+function brushStrokes(c, cx, cy, rx, ry, adult, n) {
+  const cols = adult
+    ? ['rgba(255,255,255,.45)', 'rgba(140,155,185,.28)', 'rgba(235,222,200,.35)']
+    : ['rgba(255,248,190,.5)', 'rgba(215,135,35,.28)', 'rgba(255,215,110,.4)'];
+  c.save();
+  c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.clip();
+  c.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, 6.28), d = Math.sqrt(Math.random());
+    const x = cx + Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d;
+    const len = rnd(.25, .5) * rx, ang = rnd(-.35, .35);
+    c.strokeStyle = cols[i % cols.length]; c.lineWidth = rnd(1, 2.4) * S;
+    c.beginPath(); c.moveTo(x - Math.cos(ang) * len / 2, y - Math.sin(ang) * len / 2);
+    c.quadraticCurveTo(x, y + rnd(-1, 1) * len * .2, x + Math.cos(ang) * len / 2, y + Math.sin(ang) * len / 2);
+    c.stroke();
+  }
+  c.restore();
+}
+
+// everything except the eyes and beak: painted once, slightly softened
+function paintDuck(c, adult, L) {
+  c.fillStyle = 'rgba(18,58,88,.28)';
+  c.beginPath(); c.ellipse(L * .06, L * .12, L * .5, L * .33, 0, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(230,250,250,.35)'; c.lineWidth = 1.5 * S;
+  c.beginPath(); c.ellipse(-L * .02, 0, L * .5, L * .35, 0, 0, 7); c.stroke();
+
+  const outline = adult ? 'rgba(110,95,78,.7)' : 'rgba(170,110,30,.6)';
+  const bodyG = c.createRadialGradient(-L * .05, -L * .08, L * .02, 0, 0, L * .45);
+  if (adult) { bodyG.addColorStop(0, '#fffdf6'); bodyG.addColorStop(.7, '#f4efe3'); bodyG.addColorStop(1, '#d9d1c1'); }
+  else { bodyG.addColorStop(0, '#fff2a8'); bodyG.addColorStop(.6, '#ffd84f'); bodyG.addColorStop(1, '#eab23a'); }
+  c.lineWidth = (adult ? 1.6 : 1.3) * S; c.strokeStyle = outline; c.fillStyle = bodyG;
+
+  c.beginPath();
+  if (adult) { c.moveTo(-L * .34, -L * .12); c.quadraticCurveTo(-L * .62, 0, -L * .34, L * .12); }
+  else { c.moveTo(-L * .28, -L * .1); c.quadraticCurveTo(-L * .46, 0, -L * .28, L * .1); }
+  c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(-L * .02, 0, adult ? L * .42 : L * .34, adult ? L * .27 : L * .28, 0, 0, 7); c.fill(); c.stroke();
+  shade(c, adult, -L * .3, -L * .3, L * .15, L * .3); c.fill();
+  brushStrokes(c, -L * .02, 0, adult ? L * .42 : L * .34, adult ? L * .27 : L * .28, adult, 18);
+
+  c.fillStyle = adult ? 'rgba(200,188,168,.55)' : 'rgba(230,160,40,.35)';
   for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.ellipse(-L * .1, s * L * (d.adult ? .13 : .14), L * (d.adult ? .26 : .17), L * .09, s * .12, 0, 7);
-    ctx.fill();
-    if (d.adult) {
-      ctx.strokeStyle = 'rgba(130,115,95,.45)'; ctx.lineWidth = 1 * S;
-      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(-L * (.3 - k * .06), s * L * .16); ctx.lineTo(-L * (.2 - k * .06), s * L * .11); ctx.stroke(); }
+    c.beginPath(); c.ellipse(-L * .1, s * L * (adult ? .13 : .14), L * (adult ? .26 : .17), L * .09, s * .12, 0, 7); c.fill();
+    if (adult) {
+      c.strokeStyle = 'rgba(130,115,95,.45)'; c.lineWidth = 1 * S;
+      for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-L * (.3 - k * .06), s * L * .16); c.lineTo(-L * (.2 - k * .06), s * L * .11); c.stroke(); }
     }
   }
-  // head (bobs down while eating)
-  const eatDip = d.eat > 0 ? Math.sin(d.eat * 18) * .04 : 0;
-  const hx = L * (d.adult ? .3 : .24) + L * eatDip, hr = L * (d.adult ? .16 : .17);
-  const headG = ctx.createRadialGradient(hx - hr * .3, -hr * .3, 0, hx, 0, hr);
-  if (d.adult) { headG.addColorStop(0, '#ffffff'); headG.addColorStop(1, '#e6dfd0'); }
+
+  const hx = L * (adult ? .3 : .24), hr = L * (adult ? .16 : .17);
+  const headG = c.createRadialGradient(hx - hr * .3, -hr * .3, 0, hx, 0, hr);
+  if (adult) { headG.addColorStop(0, '#ffffff'); headG.addColorStop(1, '#e6dfd0'); }
   else { headG.addColorStop(0, '#fff3b0'); headG.addColorStop(1, '#f6c740'); }
-  ctx.fillStyle = headG; ctx.strokeStyle = outline; ctx.lineWidth = (d.adult ? 1.6 : 1.3) * S;
-  ctx.beginPath(); ctx.arc(hx, 0, hr, 0, 7); ctx.fill(); ctx.stroke();
-  if (!d.adult) { // fluffy tuft
-    ctx.strokeStyle = 'rgba(200,140,30,.7)'; ctx.lineWidth = 1.2 * S;
-    ctx.beginPath(); ctx.moveTo(hx - hr * .2, 0); ctx.quadraticCurveTo(hx - hr * .6, -hr * .2, hx - hr * .9, hr * .1); ctx.stroke();
+  c.fillStyle = headG; c.strokeStyle = outline; c.lineWidth = (adult ? 1.6 : 1.3) * S;
+  c.beginPath(); c.arc(hx, 0, hr, 0, 7); c.fill(); c.stroke();
+  shade(c, adult, hx - hr, -hr, hx + hr * .6, hr); c.fill();
+  brushStrokes(c, hx, 0, hr, hr, adult, 6);
+  if (!adult) {
+    c.strokeStyle = 'rgba(200,140,30,.7)'; c.lineWidth = 1.2 * S;
+    c.beginPath(); c.moveTo(hx - hr * .2, 0); c.quadraticCurveTo(hx - hr * .6, -hr * .2, hx - hr * .9, hr * .1); c.stroke();
+    c.fillStyle = 'rgba(245,140,110,.35)';
+    for (const s of [-1, 1]) { c.beginPath(); c.arc(hx, s * hr * .78, hr * .16, 0, 7); c.fill(); }
   }
-  // beak
-  ctx.fillStyle = d.adult ? '#f29a3a' : '#f3a64a'; ctx.strokeStyle = 'rgba(160,80,20,.6)'; ctx.lineWidth = 1 * S;
+}
+
+function drawDuck(d, t) {
+  const L = d.L, sp = sprites[d.adult ? 'a' : 'k'];
+  const bob = 1 + Math.sin(t * 2.2 + d.bob) * .018;
+  const dip = d.eat > 0 ? Math.sin(d.eat * 18) * .04 * L : 0;
+  ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.hs ?? d.h); ctx.scale(bob, bob); ctx.translate(dip, 0);
+  ctx.drawImage(sp.c, -sp.ox, -sp.oy, sp.w, sp.h);
+  const hx = L * (d.adult ? .3 : .24), hr = L * (d.adult ? .16 : .17);
+  // crisp beak
+  const bl = d.adult ? 1.9 : 1.6;
+  ctx.fillStyle = d.adult ? '#f29a3a' : '#f3a64a'; ctx.strokeStyle = 'rgba(160,80,20,.5)'; ctx.lineWidth = 1 * S;
   ctx.beginPath();
   ctx.moveTo(hx + hr * .7, -hr * .42);
-  ctx.quadraticCurveTo(hx + hr * (d.adult ? 1.9 : 1.6), -hr * .3, hx + hr * (d.adult ? 1.9 : 1.6), 0);
-  ctx.quadraticCurveTo(hx + hr * (d.adult ? 1.9 : 1.6), hr * .3, hx + hr * .7, hr * .42);
+  ctx.quadraticCurveTo(hx + hr * bl, -hr * .3, hx + hr * bl, 0);
+  ctx.quadraticCurveTo(hx + hr * bl, hr * .3, hx + hr * .7, hr * .42);
   ctx.closePath(); ctx.fill(); ctx.stroke();
-  // eyes
+  // crisp eyes
   for (const s of [-1, 1]) {
     ctx.fillStyle = '#2b2622'; ctx.beginPath(); ctx.arc(hx + hr * .25, s * hr * .62, hr * .16, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hx + hr * .3, s * hr * .62 - hr * .05, hr * .06, 0, 7); ctx.fill();
-  }
-  // cheek blush on ducklings
-  if (!d.adult) {
-    ctx.fillStyle = 'rgba(245,140,110,.35)';
-    for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(hx, s * hr * .78, hr * .16, 0, 7); ctx.fill(); }
   }
   ctx.restore();
 }
@@ -200,7 +278,7 @@ const ripples = [], kibble = [], drops = [];
 function ripple(x, y, max, life, a = .5) { ripples.push({ x, y, r: 2, max, t: 0, life, a }); }
 
 function dropFood(x, y) {
-  const n = 3 + Math.floor(Math.random() * 1);
+  const n = 3 + Math.floor(Math.random() * 3);
   for (let i = 0; i < n; i++) {
     kibble.push({
       x: x + rnd(-16, 16) * S, y: y + rnd(-16, 16) * S, z: 1, t: -i * .06, state: 'falling',
@@ -219,13 +297,12 @@ function landKibble(k) {
 function drawKibble(k) {
   const fall = k.state === 'falling' ? clamp(k.z, 0, 1) : 0;
   const sc = 1 + fall * 1.6, lift = fall * 70 * S;
-  // shadow on water grows as it nears
   ctx.fillStyle = `rgba(20,55,80,${.15 + (1 - fall) * .2})`;
   ctx.beginPath(); ctx.ellipse(k.x + 2 * S, k.y + 2 * S, k.size * (1 + fall * .3), k.size * .8 * (1 + fall * .3), 0, 0, 7); ctx.fill();
   const alpha = k.state === 'floating' && k.age > 35 ? clamp(1 - (k.age - 35) / 5, 0, 1) : 1;
   ctx.save(); ctx.globalAlpha = alpha;
   ctx.translate(k.x - lift * .35, k.y - lift); ctx.rotate(k.rot); ctx.scale(sc, sc);
-  ctx.fillStyle = k.hue > .5 ? '#a1764f' : '#9e7251';
+  ctx.fillStyle = k.hue > .5 ? '#b77a43' : '#a5683a';
   ctx.strokeStyle = 'rgba(80,45,20,.7)'; ctx.lineWidth = .9 * S / sc;
   ctx.beginPath(); ctx.ellipse(0, 0, k.size, k.size * .78, 0, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,225,180,.6)';
@@ -260,7 +337,6 @@ cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { ptr.
 
 /* ---------- simulation ---------- */
 function update(dt, t) {
-  // pointer velocity fades when the mouse rests
   if (performance.now() - ptr.last > 90) { ptr.vx *= .8; ptr.vy *= .8; }
   const pSpeed = Math.hypot(ptr.vx, ptr.vy);
   if (ptr.active && pSpeed > 120) {
@@ -282,30 +358,27 @@ function update(dt, t) {
       d.rest = 0;
     } else {
       d.wander += rnd(-1, 1) * dt * 1.2;
-      if (!d.adult) { // ducklings drift after the nearest grown duck
+      if (!d.adult) {
         let m = ducks[0], md = Infinity;
         for (const a of ducks) if (a.adult) { const q = Math.hypot(a.x - d.x, a.y - d.y); if (q < md) { md = q; m = a; } }
         if (md > 120 * S) { const to = Math.atan2(m.y - d.y, m.x - d.x); d.wander += angDiff(d.wander, to) * dt * .9; }
       }
-      // steer away from edges
       const edge = L * 2.2;
       if (d.x < edge || d.x > W - edge || d.y < edge || d.y > H - edge) {
         const to = Math.atan2(H / 2 - d.y, W / 2 - d.x); d.wander += angDiff(d.wander, to) * dt * 2;
       }
       desired = d.wander;
-      // little pauses to just float
       if (d.rest > 0) { d.rest -= dt; thrust = 0; }
       else if (Math.random() < dt * .08) d.rest = rnd(1.5, 4);
     }
 
-    // turn & paddle
     const maxTurn = (best ? 5 : 1.6) * dt;
     d.h += clamp(angDiff(d.h, desired), -maxTurn, maxTurn);
     const facing = Math.abs(angDiff(d.h, desired)) < 1.2 ? 1 : .3;
     d.vx += Math.cos(d.h) * thrust * facing * dt * 1.6;
     d.vy += Math.sin(d.h) * thrust * facing * dt * 1.6;
 
-    // pointer push: shove away + carry along with the pointer's motion
+    // pointer push
     if (ptr.active && ptr.x > -900) {
       const dx = d.x - ptr.x, dy = d.y - ptr.y, dist = Math.hypot(dx, dy) || 1;
       const R = (ptr.type === 'mouse' ? 95 : 120) * S + L * .4;
@@ -324,17 +397,16 @@ function update(dt, t) {
     d.vx *= drag; d.vy *= drag;
     const sp = Math.hypot(d.vx, d.vy), cap = 180 * S;
     if (sp > cap) { d.vx *= cap / sp; d.vy *= cap / sp; }
-
     d.x += d.vx * dt; d.y += d.vy * dt;
 
     // body swings toward travel direction when shoved
-    if (sp > 45 * S && !best) {
-      const va = Math.atan2(d.vy, d.vx);
-      d.h += angDiff(d.h, va) * clamp(dt * sp / (160 * S), 0, .25);
-      d.wander += angDiff(d.wander, d.h) * dt * 2;
+    if (sp > 60 * S && !best) {
+      const va = Math.atan2(d.vy, d.vx), turn = 1.2 * dt;
+      d.h += clamp(angDiff(d.h, va) * dt * sp / (220 * S), -turn, turn);
+      d.wander += angDiff(d.wander, d.h) * dt * 1.5;
     }
 
-    // walls: soft cushion, then hard stop with a gentle bounce
+    // walls
     const m = L * .55, cush = L * 1.1, k = 900 * S;
     if (d.x < cush) d.vx += (cush - d.x) / cush * k * dt * .4;
     if (d.x > W - cush) d.vx -= (d.x - (W - cush)) / cush * k * dt * .4;
@@ -344,6 +416,9 @@ function update(dt, t) {
     if (d.x > W - m) { d.x = W - m; d.vx = -Math.abs(d.vx) * .3; }
     if (d.y < m) { d.y = m; d.vy = Math.abs(d.vy) * .3; }
     if (d.y > H - m) { d.y = H - m; d.vy = -Math.abs(d.vy) * .3; }
+
+    // smoothed heading for drawing
+    d.hs = (d.hs ?? d.h) + angDiff(d.hs ?? d.h, d.h) * Math.min(1, dt * 6);
 
     // wake
     d.wake -= dt;
@@ -364,16 +439,19 @@ function update(dt, t) {
     }
   }
 
-  // ducks don't overlap
+  // ducks gently keep their distance (soft spring, no snapping)
   for (let i = 0; i < ducks.length; i++) for (let j = i + 1; j < ducks.length; j++) {
     const a = ducks[i], b = ducks[j], dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || .01;
-    const min = (a.L + b.L) * .36;
-    if (dist < min) {
-      const push = (min - dist) / 2, nx = dx / dist, ny = dy / dist;
+    const comfy = (a.L + b.L) * .65, min = (a.L + b.L) * .42;
+    if (dist < comfy) {
+      const nx = dx / dist, ny = dy / dist;
+      const f = (1 - dist / comfy) ** 1.5 * 900 * S * dt;
       const wa = b.L / (a.L + b.L), wb = a.L / (a.L + b.L);
-      a.x -= nx * push * 2 * wa; a.y -= ny * push * 2 * wa; b.x += nx * push * 2 * wb; b.y += ny * push * 2 * wb;
-      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-      if (rv < 0) { a.vx += nx * rv * .5; a.vy += ny * rv * .5; b.vx -= nx * rv * .5; b.vy -= ny * rv * .5; }
+      a.vx -= nx * f * wa; a.vy -= ny * f * wa; b.vx += nx * f * wb; b.vy += ny * f * wb;
+      if (dist < min) {
+        const push = (min - dist) * .3;
+        a.x -= nx * push * wa; a.y -= ny * push * wa; b.x += nx * push * wb; b.y += ny * push * wb;
+      }
     }
   }
 
@@ -387,7 +465,6 @@ function update(dt, t) {
     } else {
       k.age += dt;
       k.x += Math.sin(t * .6 + k.rot) * dt * 2 * S; k.y += Math.cos(t * .5 + k.rot) * dt * 2 * S;
-      // pushed by passing ducks and pointer a little
       for (const d of ducks) { const dx = k.x - d.x, dy = k.y - d.y, q = Math.hypot(dx, dy); if (q < d.L * .35 && q > 0) { k.x += dx / q * dt * 20; k.y += dy / q * dt * 20; } }
       k.x = clamp(k.x, 8, W - 8); k.y = clamp(k.y, 8, H - 8);
       if (k.age > 40) kibble.splice(i, 1);
@@ -402,20 +479,17 @@ function update(dt, t) {
 function render(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(bg, 0, 0, W, H);
-  // drifting cloud reflections
   for (const c of clouds) {
     const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
     g.addColorStop(0, 'rgba(255,255,250,.16)'); g.addColorStop(1, 'rgba(255,255,250,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r * 1.4, c.r * .7, 0, 0, 7); ctx.fill();
   }
-  // twinkling light on the water
   for (const gl of glints) {
     const a = Math.max(0, Math.sin(t * gl.s + gl.p)) ** 6 * .7;
     if (a < .02) continue;
     ctx.fillStyle = `rgba(255,255,245,${a})`;
     ctx.beginPath(); ctx.ellipse(gl.x, gl.y, 3 * S, 1.1 * S, 0, 0, 7); ctx.fill();
   }
-  // ripples
   ctx.lineCap = 'round';
   for (const r of ripples) {
     const p = r.t / r.life, rad = r.r + (r.max - r.r) * (1 - (1 - p) * (1 - p));
@@ -424,7 +498,6 @@ function render(t) {
     ctx.strokeStyle = `rgba(30,90,120,${r.a * .4 * (1 - p)})`; ctx.lineWidth = 1.2 * S;
     ctx.beginPath(); ctx.ellipse(r.x + 1.5 * S, r.y + 2 * S, rad, rad * .92, 0, 0, 7); ctx.stroke();
   }
-  // floating kibble below ducks, falling kibble above
   kibble.forEach(k => { if (k.state === 'floating') drawKibble(k); });
   [...ducks].sort((a, b) => a.L - b.L).forEach(d => drawDuck(d, t));
   kibble.forEach(k => { if (k.state === 'falling' && k.t > 0) drawKibble(k); });
@@ -432,7 +505,6 @@ function render(t) {
     ctx.fillStyle = `rgba(245,255,255,${.8 * (1 - p.t / p.life)})`;
     ctx.beginPath(); ctx.arc(p.x, p.y, 2 * S, 0, 7); ctx.fill();
   }
-  // pointer: a soft fingertip ring
   if (ptr.active && ptr.x > -900) {
     ctx.strokeStyle = 'rgba(255,253,240,.55)'; ctx.lineWidth = 1.5 * S;
     ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 14 * S, 0, 7); ctx.stroke();
@@ -447,12 +519,12 @@ function resize() {
   S = clamp(Math.min(W, H) / 760, .7, 1.25);
   cv.width = W * DPR; cv.height = H * DPR;
   paintBackground();
+  buildSprites();
   if (first) spawnDucks(); else rescaleDucks();
 }
 addEventListener('resize', resize);
 resize();
 
-// a starter handful so the first frame shows the feeding behaviour
 dropFood(W * .55, H * .55);
 
 let lastT = performance.now();
