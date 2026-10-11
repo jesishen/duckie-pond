@@ -9,13 +9,13 @@
 <style>
 /* Duck Pond: full-screen canvas pond. */
 :root{
-  --pond-deep:#2f7fa3;
+  --pond-deep:#34718d;
   --pond-mid:#5fb1c9;
-  --pond-light:#a9dde3;
+  --pond-light:#a9cee3;
   --paper:#fbf6ea;
   --ink:#3b4a42;
   --ink-soft:#6c7a6f;
-  --moss:#6f9a5a;
+  --moss:#8ab177;
   --font-display:"Kaisei Opti","Hiragino Mincho ProN",Georgia,serif;
   --font-body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Trebuchet MS",system-ui,sans-serif;
   color-scheme:light;
@@ -141,9 +141,9 @@ function drawDuck(d, t) {
 
   const outline = d.adult ? 'rgba(110,95,78,.7)' : 'rgba(170,110,30,.6)';
   const bodyG = ctx.createRadialGradient(-L * .05, -L * .08, L * .02, 0, 0, L * .45);
-  if (d.adult) { bodyG.addColorStop(0, '#fffdf6'); bodyG.addColorStop(.7, '#f4efe3'); bodyG.addColorStop(1, '#d9d1c1'); }
-  else { bodyG.addColorStop(0, '#fff2a8'); bodyG.addColorStop(.6, '#ffd84f'); bodyG.addColorStop(1, '#eab23a'); }
-  ctx.lineWidth = (d.adult ? 1.6 : 1.3) * S; ctx.strokeStyle = outline; ctx.fillStyle = bodyG;
+  if (d.adult) { bodyG.addColorStop(0, '#fffdf6'); bodyG.addColorStop(.7, '#f4efe3'); bodyG.addColorStop(1, '#e7dfd0'); }
+  else { bodyG.addColorStop(0, '#f0e399'); bodyG.addColorStop(.6, '#f5d669'); bodyG.addColorStop(1, '#f2ca5c'); }
+  ctx.lineWidth = (d.adult ? 1.4 : 1.2) * S; ctx.strokeStyle = outline; ctx.fillStyle = bodyG;
 
   // tail
   ctx.beginPath();
@@ -200,7 +200,7 @@ const ripples = [], kibble = [], drops = [];
 function ripple(x, y, max, life, a = .5) { ripples.push({ x, y, r: 2, max, t: 0, life, a }); }
 
 function dropFood(x, y) {
-  const n = 3 + Math.floor(Math.random() * 3);
+  const n = 3 + Math.floor(Math.random() * 1);
   for (let i = 0; i < n; i++) {
     kibble.push({
       x: x + rnd(-16, 16) * S, y: y + rnd(-16, 16) * S, z: 1, t: -i * .06, state: 'falling',
@@ -225,7 +225,7 @@ function drawKibble(k) {
   const alpha = k.state === 'floating' && k.age > 35 ? clamp(1 - (k.age - 35) / 5, 0, 1) : 1;
   ctx.save(); ctx.globalAlpha = alpha;
   ctx.translate(k.x - lift * .35, k.y - lift); ctx.rotate(k.rot); ctx.scale(sc, sc);
-  ctx.fillStyle = k.hue > .5 ? '#b77a43' : '#a5683a';
+  ctx.fillStyle = k.hue > .5 ? '#a1764f' : '#9e7251';
   ctx.strokeStyle = 'rgba(80,45,20,.7)'; ctx.lineWidth = .9 * S / sc;
   ctx.beginPath(); ctx.ellipse(0, 0, k.size, k.size * .78, 0, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,225,180,.6)';
