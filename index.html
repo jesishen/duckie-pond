@@ -8,11 +8,34 @@
 html,body{height:100%;overflow:hidden;margin:0}
 body{background:#2f7fa3 url("water.jpg") center / cover no-repeat fixed;-webkit-user-select:none;user-select:none}
 #pond{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none;z-index:1;background:transparent}
+#vol{position:fixed;top:calc(16px + env(safe-area-inset-top, 0px));right:16px;z-index:2;display:flex;align-items:center;gap:8px;opacity:.8;color:#fff}
+#vol:hover,#vol:focus-within{opacity:1}
+#mute{display:flex;padding:6px;margin:0;border:0;background:none;color:#fff;cursor:pointer;border-radius:6px}
+#mute:focus-visible,#volume:focus-visible{outline:2px solid #fff;outline-offset:3px}
+#mute svg{width:24px;height:24px;display:block}
+#mute .x{display:none}
+#mute.off .x{display:inline}
+#mute.off .waves{display:none}
+#volume{--p:80%;-webkit-appearance:none;appearance:none;width:110px;height:4px;margin:0;border-radius:2px;cursor:pointer;
+  background:linear-gradient(to right,#fff var(--p),rgba(255,255,255,.35) var(--p))}
+#volume::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#volume::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#volume::-moz-range-track{background:transparent}
 </style>
 </head>
 <body>
 
 <canvas id="pond" aria-label="Pond with ducks. Move the pointer to nudge them, click or tap to drop kibble."></canvas>
+<div id="vol">
+  <button id="mute" type="button" aria-label="Mute">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>
+      <path class="waves" d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path class="x" d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume">
+</div>
 
 <script>
 (() => {
@@ -175,22 +198,27 @@ function drawDuck(d, t) {
 }
 
 /* ---------- sounds ---------- */
+const QUACK_VOL = .8, POND_VOL = .25;
 const quack = new Audio('quack.mp3');
-quack.preload = 'auto'; quack.volume = .8;
+quack.preload = 'auto';
 const pondSound = new Audio('pond.mp3');
-pondSound.loop = true; pondSound.volume = .25;
-let pondStarted = false;
+pondSound.loop = true;
+let master = .8, muted = false;
+
 // browsers only allow sound after the first click/tap
+let pondStarted = false;
 function startPond() {
   if (pondStarted) return;
   pondStarted = true;
   pondSound.play().catch(() => { pondStarted = false; });
 }
+['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev =>
+  addEventListener(ev, startPond, { passive: true }));
+
 function feeding() { return kibble.some(k => k.state !== 'eaten'); }
-const QUACK_VOL = .8;
 // plays the quack once; never overlaps itself
 function playQuack() {
-  quack.volume = QUACK_VOL; // cancels any fade if new food is dropped
+  quack.volume = QUACK_VOL * master; // cancels any fade if new food is dropped
   if (!quack.paused) return;
   quack.currentTime = 0;
   quack.play().catch(() => {});
@@ -200,10 +228,30 @@ quack.addEventListener('ended', () => { if (feeding()) playQuack(); });
 // runs every frame: once the food is gone, fade the quack out over 2 seconds
 function fadeQuack(dt) {
   if (quack.paused || feeding()) return;
-  const v = quack.volume - QUACK_VOL * dt / 2;
-  if (v <= 0) { quack.pause(); quack.volume = QUACK_VOL; }
+  const v = quack.volume - QUACK_VOL * master * dt / 2;
+  if (v <= 0) { quack.pause(); quack.volume = QUACK_VOL * master; }
   else quack.volume = v;
 }
+
+/* ---------- volume control ---------- */
+const volEl = document.getElementById('volume');
+const muteEl = document.getElementById('mute');
+function applyVolume() {
+  const silent = muted || master === 0;
+  pondSound.volume = POND_VOL * master;
+  if (quack.paused || feeding()) quack.volume = QUACK_VOL * master;
+  pondSound.muted = quack.muted = silent;   // muting also works on iPhone
+  muteEl.classList.toggle('off', silent);
+  muteEl.setAttribute('aria-label', silent ? 'Unmute' : 'Mute');
+  volEl.style.setProperty('--p', (silent ? 0 : master * 100) + '%');
+}
+volEl.addEventListener('input', () => { master = volEl.value / 100; muted = false; applyVolume(); });
+muteEl.addEventListener('click', () => {
+  if (master === 0) { master = .8; volEl.value = 80; muted = false; }
+  else muted = !muted;
+  applyVolume();
+});
+applyVolume();
 
 /* ---------- ripples, kibble, splashes ---------- */
 const ripples = [], kibble = [], drops = [];
@@ -252,7 +300,6 @@ cv.addEventListener('pointermove', e => {
   ptr.active = e.pointerType === 'mouse' || e.buttons > 0 || ptr.down !== null;
 });
 cv.addEventListener('pointerdown', e => {
-  startPond();
   ptr.down = { x: e.clientX, y: e.clientY, t: performance.now() };
   ptr.x = e.clientX; ptr.y = e.clientY; ptr.last = performance.now(); ptr.type = e.pointerType; ptr.active = true;
   ptr.vx = ptr.vy = 0;
@@ -461,7 +508,7 @@ let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(.04, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
-    update(dt, t); fadeQuack(dt); render(t);
+  update(dt, t); fadeQuack(dt); render(t);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
