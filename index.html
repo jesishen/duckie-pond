@@ -6,7 +6,7 @@
 <title>Duck Pond</title>
 <style>
 html,body{height:100%;overflow:hidden;margin:0}
-body{background:#ff00ff url("water.jpg") center / cover no-repeat fixed;-webkit-user-select:none;user-select:none}
+body{background:#2f7fa3 url("water.jpg") center / cover no-repeat fixed;-webkit-user-select:none;user-select:none}
 #pond{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none;z-index:1;background:transparent}
 </style>
 </head>
@@ -26,101 +26,25 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
-/* ---------- lily pads over the water image ---------- */
-let pads = [];
+/* ---------- overlay on the water image ---------- */
 function paintBackground() {
   bg.width = W * DPR; bg.height = H * DPR;
   bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   bctx.clearRect(0, 0, W, H); // the water image shows through
-  // lily pads near the edges
-  pads = [];
-  const spots = [[.05, .12], [.93, .08], [.04, .86], [.95, .9], [.9, .48], [.1, .5]];
-  spots.forEach(([fx, fy], i) => {
-    const r = rnd(26, 40) * S;
-    pads.push({ x: fx * W, y: fy * H, r, rot: rnd(0, 6.28), flower: i % 3 === 0 });
-    if (Math.random() < .7) pads.push({ x: fx * W + rnd(-1, 1) * r * 1.8, y: fy * H + rnd(-1, 1) * r * 1.6, r: r * rnd(.55, .75), rot: rnd(0, 6.28), flower: false });
-  });
-
   // vignette
   const v = bctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.hypot(W, H) * .6);
   v.addColorStop(0, 'rgba(20,60,90,0)'); v.addColorStop(1, 'rgba(10,40,70,.25)');
   bctx.fillStyle = v; bctx.fillRect(0, 0, W, H);
 }
-function drawPad(p) {
-  const r = p.r, size = Math.ceil(r * 2.6), half = size / 2;
-  const off = document.createElement('canvas');
-  off.width = Math.ceil(size * DPR); off.height = Math.ceil(size * DPR);
-  const c = off.getContext('2d');
-  c.setTransform(DPR, 0, 0, DPR, 0, 0);
-  c.translate(half, half); c.rotate(p.rot);
-  const padPath = () => { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, r, .32, Math.PI * 2 - .02); c.closePath(); };
-  // base color
-  padPath(); c.fillStyle = '#6fa85c'; c.fill();
-  c.save(); padPath(); c.clip();
-  // painted dabs of many greens
-  const greens = ['#e2ec9a', '#c6e08a', '#a3cf72', '#86bd66', '#6aa85e', '#5e9a58', '#467f5a', '#3a6e62', '#2f5f66', '#9cc4a0', '#d6c977'];
-  for (let i = 0; i < 26; i++) {
-    const a = rnd(0, 6.28), d = rnd(0, r), x = Math.cos(a) * d, y = Math.sin(a) * d, rr = rnd(.25, .6) * r;
-    const g = c.createRadialGradient(x, y, 0, x, y, rr);
-    const col = greens[i % greens.length];
-    g.addColorStop(0, col + 'd0'); g.addColorStop(1, col + '00');
-    c.fillStyle = g; c.fillRect(-r, -r, r * 2, r * 2);
-  }
-  // warm light top-left, blue-green shadow bottom-right
-  const la = -Math.PI * .75 - p.rot, lx = Math.cos(la) * r, ly = Math.sin(la) * r;
-  const sh = c.createLinearGradient(lx, ly, -lx, -ly);
-  sh.addColorStop(0, 'rgba(250,255,200,.5)'); sh.addColorStop(.25, 'rgba(220,240,160,.15)'); sh.addColorStop(.55, 'rgba(0,0,0,0)'); sh.addColorStop(.8, 'rgba(40,90,90,.3)'); sh.addColorStop(1, 'rgba(25,55,85,.6)');
-  c.fillStyle = sh; c.fillRect(-r, -r, r * 2, r * 2);
-  const rim = c.createRadialGradient(0, 0, r * .5, 0, 0, r);
-  rim.addColorStop(0, 'rgba(40,80,60,0)'); rim.addColorStop(1, 'rgba(40,80,60,.35)');
-  c.fillStyle = rim; c.fillRect(-r, -r, r * 2, r * 2);
-  // light brushstrokes catching the sun
-  for (let i = 0; i < 12; i++) {
-    const a = la + rnd(-.6, .6), d0 = r * rnd(.35, .8);
-    c.strokeStyle = `rgba(245,255,210,${rnd(.15, .35)})`; c.lineWidth = rnd(1.5, 3) * S; c.lineCap = 'round';
-    c.beginPath(); c.arc(0, 0, d0, a - .25, a + .25); c.stroke();
-  }
-  // darker strokes on the shadow side
-  for (let i = 0; i < 10; i++) {
-    const a = la + Math.PI + rnd(-.9, .9), d0 = r * rnd(.25, .85);
-    c.strokeStyle = `rgba(30,70,70,${rnd(.12, .28)})`; c.lineWidth = rnd(1.5, 3.5) * S;
-    c.beginPath(); c.arc(0, 0, d0, a - .3, a + .3); c.stroke();
-  }
-  // faint veins
-  c.strokeStyle = 'rgba(50,90,50,.16)'; c.lineWidth = 1.6 * S; c.lineCap = 'round';
-  for (let a = .7; a < 6.2; a += .75) { c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * r * .85, Math.sin(a) * r * .85); c.stroke(); }
-  c.restore();
-  // soft shadow on the water, then the pad
-  bctx.save();
-  if ('filter' in bctx) bctx.filter = `blur(${4 * S}px)`;
-  bctx.fillStyle = 'rgba(20,60,80,.25)';
-  bctx.beginPath(); bctx.ellipse(p.x + 4 * S, p.y + 6 * S, r, r * .95, 0, 0, 7); bctx.fill();
-  bctx.filter = 'none';
-  bctx.drawImage(off, p.x - half, p.y - half, size, size);
-  bctx.restore();
-  if (p.flower) drawFlower(p);
-}
-function drawFlower(p) {
-  const c = bctx, r = p.r;
-  c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.translate(r * .25, -r * .2);
-  if ('filter' in c) c.filter = `blur(${.6 * S}px)`;
-  for (let i = 0; i < 8; i++) {
-    c.rotate(Math.PI / 4);
-    c.fillStyle = i % 2 ? '#f6c9d4' : '#fbe3e8';
-    c.beginPath(); c.ellipse(r * .22, 0, r * .24, r * .1, 0, 0, 7); c.fill();
-  }
-  c.fillStyle = '#f4cf5b'; c.beginPath(); c.arc(0, 0, r * .1, 0, 7); c.fill();
-  c.restore();
-}
 
 /* ---------- ducks ---------- */
 const ducks = [];
 function makeDuck(adult) {
-  const L = (adult ? 64 : 34) * S;
+  const L = (adult ? 85 : 45) * S;
   return {
     adult, L, x: rnd(L * 2, W - L * 2), y: rnd(L * 2, H - L * 2), vx: 0, vy: 0,
     h: rnd(0, 6.28), wander: rnd(0, 6.28), rest: 0, bob: rnd(0, 6.28), eat: 0, wake: 0,
-    pace: adult ? rnd(14, 22) : rnd(18, 30)
+    pace: adult ? rnd(28, 40) : rnd(34, 50)
   };
 }
 function spawnDucks() {
@@ -133,14 +57,14 @@ function spawnDucks() {
   }
 }
 function rescaleDucks() {
-  ducks.forEach(d => { d.L = (d.adult ? 64 : 34) * S; d.x = clamp(d.x, d.L, W - d.L); d.y = clamp(d.y, d.L, H - d.L); });
+  ducks.forEach(d => { d.L = (d.adult ? 85 : 45) * S; d.x = clamp(d.x, d.L, W - d.L); d.y = clamp(d.y, d.L, H - d.L); });
 }
 
 const sprites = {};
 const canBlur = 'filter' in ctx;
 function buildSprites() {
   for (const adult of [true, false]) {
-    const L = (adult ? 64 : 34) * S, pad = L * .25;
+    const L = (adult ? 85 : 45) * S, pad = L * .25;
     const w = L * 1.4 + pad * 2, h = L * 1.0 + pad * 2, ox = pad + L * .7, oy = h / 2;
     const c = document.createElement('canvas');
     c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
@@ -250,11 +174,43 @@ function drawDuck(d, t) {
   ctx.restore();
 }
 
+/* ---------- sounds ---------- */
+const quack = new Audio('quack.mp3');
+quack.preload = 'auto'; quack.volume = .8;
+const pondSound = new Audio('pond.mp3');
+pondSound.loop = true; pondSound.volume = .25;
+let pondStarted = false;
+// browsers only allow sound after the first click/tap
+function startPond() {
+  if (pondStarted) return;
+  pondStarted = true;
+  pondSound.play().catch(() => { pondStarted = false; });
+}
+function feeding() { return kibble.some(k => k.state !== 'eaten'); }
+const QUACK_VOL = .8;
+// plays the quack once; never overlaps itself
+function playQuack() {
+  quack.volume = QUACK_VOL; // cancels any fade if new food is dropped
+  if (!quack.paused) return;
+  quack.currentTime = 0;
+  quack.play().catch(() => {});
+}
+// when the quack finishes, play it again only if there's still food out
+quack.addEventListener('ended', () => { if (feeding()) playQuack(); });
+// runs every frame: once the food is gone, fade the quack out over 2 seconds
+function fadeQuack(dt) {
+  if (quack.paused || feeding()) return;
+  const v = quack.volume - QUACK_VOL * dt / 2;
+  if (v <= 0) { quack.pause(); quack.volume = QUACK_VOL; }
+  else quack.volume = v;
+}
+
 /* ---------- ripples, kibble, splashes ---------- */
 const ripples = [], kibble = [], drops = [];
 function ripple(x, y, max, life, a = .5) { ripples.push({ x, y, r: 2, max, t: 0, life, a }); }
 
 function dropFood(x, y) {
+  playQuack();
   const n = 3 + Math.floor(Math.random() * 3);
   for (let i = 0; i < n; i++) {
     kibble.push({
@@ -296,6 +252,7 @@ cv.addEventListener('pointermove', e => {
   ptr.active = e.pointerType === 'mouse' || e.buttons > 0 || ptr.down !== null;
 });
 cv.addEventListener('pointerdown', e => {
+  startPond();
   ptr.down = { x: e.clientX, y: e.clientY, t: performance.now() };
   ptr.x = e.clientX; ptr.y = e.clientY; ptr.last = performance.now(); ptr.type = e.pointerType; ptr.active = true;
   ptr.vx = ptr.vy = 0;
@@ -331,7 +288,7 @@ function update(dt, t) {
     for (const k of floating) { const dd = Math.hypot(k.x - d.x, k.y - d.y); if (dd < bd) { bd = dd; best = k; } }
     if (best) {
       desired = Math.atan2(best.y - d.y, best.x - d.x);
-      thrust = (d.adult ? 95 : 110) * S * clamp(bd / (L * 1.2), .35, 1);
+      thrust = (d.adult ? 190 : 220) * S * clamp(bd / (L * 1.2), .35, 1);
       d.rest = 0; d.mood = 1; d.moodTo = 1; d.moodT = 0;
     } else {
       d.wander += rnd(-1, 1) * dt * 1.2;
@@ -379,7 +336,7 @@ function update(dt, t) {
     // water drag
     const drag = Math.exp(-dt * 2.6);
     d.vx *= drag; d.vy *= drag;
-    const sp = Math.hypot(d.vx, d.vy), cap = 180 * S;
+    const sp = Math.hypot(d.vx, d.vy), cap = 260 * S;
     if (sp > cap) { d.vx *= cap / sp; d.vy *= cap / sp; }
     d.x += d.vx * dt; d.y += d.vy * dt;
 
@@ -504,7 +461,7 @@ let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(.04, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
-  update(dt, t); render(t);
+    update(dt, t); fadeQuack(dt); render(t);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
