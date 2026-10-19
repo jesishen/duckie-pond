@@ -40,7 +40,7 @@ function paintBackground() {
     pads.push({ x: fx * W, y: fy * H, r, rot: rnd(0, 6.28), flower: i % 3 === 0 });
     if (Math.random() < .7) pads.push({ x: fx * W + rnd(-1, 1) * r * 1.8, y: fy * H + rnd(-1, 1) * r * 1.6, r: r * rnd(.55, .75), rot: rnd(0, 6.28), flower: false });
   });
-  pads.forEach(drawPad);
+
   // vignette
   const v = bctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.hypot(W, H) * .6);
   v.addColorStop(0, 'rgba(20,60,90,0)'); v.addColorStop(1, 'rgba(10,40,70,.25)');
