@@ -198,7 +198,7 @@ function drawDuck(d, t) {
 }
 
 /* ---------- sounds ---------- */
-const QUACK_VOL = .8, POND_VOL = .25;
+const QUACK_VOL = .6, POND_VOL = .25;
 const quack = new Audio('quack.mp3');
 quack.preload = 'auto';
 const pondSound = new Audio('pond.mp3');
@@ -227,10 +227,10 @@ function playQuack() {
 quack.addEventListener('ended', () => { if (feeding()) playQuack(); });
 // runs every frame: once the food is gone, fade the quack out over 2 seconds
 function fadeQuack(dt) {
-  if (quack.paused || feeding()) return;
-  const v = quack.volume - QUACK_VOL * master * dt / 2;
-  if (v <= 0) { quack.pause(); quack.volume = QUACK_VOL * master; }
-  else quack.volume = v;
+  if (quack.paused || feeding() || !quack.duration) return;
+  const left = quack.duration - quack.currentTime;          // seconds left in the clip
+  const target = QUACK_VOL * master * clamp(left / 2, 0, 1); // fades over the final 2 seconds
+  quack.volume = Math.min(quack.volume, target);
 }
 
 /* ---------- volume control ---------- */
