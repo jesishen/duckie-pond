@@ -21,6 +21,14 @@ body{background:#2f7fa3 url("water.jpg") center / cover no-repeat fixed;-webkit-
 #volume::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #volume::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #volume::-moz-range-track{background:transparent}
+#full{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:2;display:flex;padding:6px;margin:0;border:0;background:none;color:#fff;opacity:.8;cursor:pointer;border-radius:6px}
+#full[hidden]{display:none}
+#full:hover{opacity:1}
+#full:focus-visible{outline:2px solid #fff;outline-offset:3px}
+#full svg{width:24px;height:24px;display:block}
+#full .shrink{display:none}
+#full.on .grow{display:none}
+#full.on .shrink{display:inline}
 </style>
 </head>
 <body>
@@ -36,6 +44,12 @@ body{background:#2f7fa3 url("water.jpg") center / cover no-repeat fixed;-webkit-
   </button>
   <input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume">
 </div>
+<button id="full" type="button" aria-label="Full screen" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path class="grow" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
+    <path class="shrink" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>
+  </svg>
+</button>
 
 <script>
 (() => {
@@ -252,6 +266,26 @@ muteEl.addEventListener('click', () => {
   applyVolume();
 });
 applyVolume();
+
+/* ---------- full screen ---------- */
+const fullEl = document.getElementById('full');
+const root = document.documentElement;
+const canFull = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+fullEl.hidden = !canFull; // iPhones don't allow full screen, so the button stays hidden there
+fullEl.addEventListener('click', () => {
+  const p = isFull()
+    ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+    : (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+  if (p && p.catch) p.catch(() => {});
+});
+function syncFull() {
+  const on = isFull();
+  fullEl.classList.toggle('on', on);
+  fullEl.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+}
+document.addEventListener('fullscreenchange', syncFull);
+document.addEventListener('webkitfullscreenchange', syncFull);
 
 /* ---------- ripples, kibble, splashes ---------- */
 const ripples = [], kibble = [], drops = [];
